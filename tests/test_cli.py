@@ -193,47 +193,22 @@ def test_url_colon_slash_slash_only():
 
 
 class TestLocalhostShorthand:
-    def test_expand_localhost_shorthand(self):
-        args = parser.parse_args(args=[':'], env=MockEnvironment())
-        assert args.url == 'http://localhost'
-
-    def test_expand_localhost_shorthand_with_slash(self):
-        args = parser.parse_args(args=[':/'], env=MockEnvironment())
-        assert args.url == 'http://localhost/'
-
-    def test_expand_localhost_shorthand_with_port(self):
-        args = parser.parse_args(args=[':3000'], env=MockEnvironment())
-        assert args.url == 'http://localhost:3000'
-
-    def test_expand_localhost_shorthand_with_path(self):
-        args = parser.parse_args(args=[':/path'], env=MockEnvironment())
-        assert args.url == 'http://localhost/path'
-
-    def test_expand_localhost_shorthand_with_port_and_slash(self):
-        args = parser.parse_args(args=[':3000/'], env=MockEnvironment())
-        assert args.url == 'http://localhost:3000/'
-
-    def test_expand_localhost_shorthand_with_port_and_path(self):
-        args = parser.parse_args(args=[':3000/path'], env=MockEnvironment())
-        assert args.url == 'http://localhost:3000/path'
-
-    def test_dont_expand_shorthand_ipv6_as_shorthand(self):
-        args = parser.parse_args(args=['::1'], env=MockEnvironment())
-        assert args.url == 'http://::1'
-
-    def test_dont_expand_longer_ipv6_as_shorthand(self):
-        args = parser.parse_args(
-            args=['::ffff:c000:0280'],
-            env=MockEnvironment()
-        )
-        assert args.url == 'http://::ffff:c000:0280'
-
-    def test_dont_expand_full_ipv6_as_shorthand(self):
-        args = parser.parse_args(
-            args=['0000:0000:0000:0000:0000:0000:0000:0001'],
-            env=MockEnvironment()
-        )
-        assert args.url == 'http://0000:0000:0000:0000:0000:0000:0000:0001'
+    @pytest.mark.parametrize('arg, expected_url', [
+        pytest.param(':', 'http://localhost', id='expand_localhost_shorthand'),
+        pytest.param(':/', 'http://localhost/', id='expand_localhost_shorthand_with_slash'),
+        pytest.param(':3000', 'http://localhost:3000', id='expand_localhost_shorthand_with_port'),
+        pytest.param(':/path', 'http://localhost/path', id='expand_localhost_shorthand_with_path'),
+        pytest.param(':3000/', 'http://localhost:3000/', id='expand_localhost_shorthand_with_port_and_slash'),
+        pytest.param(':3000/path', 'http://localhost:3000/path', id='expand_localhost_shorthand_with_port_and_path'),
+        pytest.param('::1', 'http://::1', id='dont_expand_shorthand_ipv6_as_shorthand'),
+        pytest.param('::ffff:c000:0280', 'http://::ffff:c000:0280', id='dont_expand_longer_ipv6_as_shorthand'),
+        pytest.param('0000:0000:0000:0000:0000:0000:0000:0001',
+                     'http://0000:0000:0000:0000:0000:0000:0000:0001',
+                     id='dont_expand_full_ipv6_as_shorthand'),
+    ])
+    def test_localhost_shorthand(self, arg, expected_url):
+        args = parser.parse_args(args=[arg], env=MockEnvironment())
+        assert args.url == expected_url
 
 
 class TestArgumentParser:
@@ -241,82 +216,56 @@ class TestArgumentParser:
     def setup_method(self, method):
         self.parser = httpie.cli.argparser.HTTPieArgumentParser()
 
-    def test_guess_when_method_set_and_valid(self):
-        self.parser.args = argparse.Namespace()
-        self.parser.args.method = 'GET'
-        self.parser.args.url = 'http://example.com/'
-        self.parser.args.request_items = []
-        self.parser.args.ignore_stdin = False
+    @pytest.mark.parametrize(
+        'method, url, request_items, expected_method, expected_url, expected_items',
+        [
+            pytest.param(
+                'GET', 'http://example.com/', [],
+                'GET', 'http://example.com/', [],
+                id='method_set_and_valid',
+            ),
+            pytest.param(
+                None, 'http://example.com/', [],
+                'GET', 'http://example.com/', [],
+                id='method_not_set',
+            ),
+            pytest.param(
+                'http://example.com/', 'data=field', [],
+                'POST', 'http://example.com/',
+                [KeyValueArg(key='data', value='field', sep='=', orig='data=field')],
+                id='method_set_but_invalid_and_data_field',
+            ),
+            pytest.param(
+                'http://example.com/', 'test:header', [],
+                'GET', 'http://example.com/',
+                [KeyValueArg(key='test', value='header', sep=':', orig='test:header')],
+                id='method_set_but_invalid_and_header_field',
+            ),
+            pytest.param(
+                'http://example.com/', 'new_item=a',
+                [KeyValueArg(key='old_item', value='b', sep='=', orig='old_item=b')],
+                'POST', 'http://example.com/',
+                [
+                    KeyValueArg(key='new_item', value='a', sep='=', orig='new_item=a'),
+                    KeyValueArg(key='old_item', value='b', sep='=', orig='old_item=b'),
+                ],
+                id='method_set_but_invalid_and_item_exists',
+            ),
+        ],
+    )
+    def test_guess_method(self, method, url, request_items,
+                          expected_method, expected_url, expected_items):
+        self.parser.args = argparse.Namespace(
+            method=method,
+            url=url,
+            request_items=request_items,
+            ignore_stdin=False,
+        )
         self.parser.env = MockEnvironment()
         self.parser._guess_method()
-        assert self.parser.args.method == 'GET'
-        assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items == []
-
-    def test_guess_when_method_not_set(self):
-        self.parser.args = argparse.Namespace()
-        self.parser.args.method = None
-        self.parser.args.url = 'http://example.com/'
-        self.parser.args.request_items = []
-        self.parser.args.ignore_stdin = False
-        self.parser.env = MockEnvironment()
-        self.parser._guess_method()
-        assert self.parser.args.method == 'GET'
-        assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items == []
-
-    def test_guess_when_method_set_but_invalid_and_data_field(self):
-        self.parser.args = argparse.Namespace()
-        self.parser.args.method = 'http://example.com/'
-        self.parser.args.url = 'data=field'
-        self.parser.args.request_items = []
-        self.parser.args.ignore_stdin = False
-        self.parser.env = MockEnvironment()
-        self.parser._guess_method()
-        assert self.parser.args.method == 'POST'
-        assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items == [
-            KeyValueArg(key='data',
-                        value='field',
-                        sep='=',
-                        orig='data=field')
-        ]
-
-    def test_guess_when_method_set_but_invalid_and_header_field(self):
-        self.parser.args = argparse.Namespace()
-        self.parser.args.method = 'http://example.com/'
-        self.parser.args.url = 'test:header'
-        self.parser.args.request_items = []
-        self.parser.args.ignore_stdin = False
-        self.parser.env = MockEnvironment()
-        self.parser._guess_method()
-        assert self.parser.args.method == 'GET'
-        assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items == [
-            KeyValueArg(key='test',
-                        value='header',
-                        sep=':',
-                        orig='test:header')
-        ]
-
-    def test_guess_when_method_set_but_invalid_and_item_exists(self):
-        self.parser.args = argparse.Namespace()
-        self.parser.args.method = 'http://example.com/'
-        self.parser.args.url = 'new_item=a'
-        self.parser.args.request_items = [
-            KeyValueArg(
-                key='old_item', value='b', sep='=', orig='old_item=b')
-        ]
-        self.parser.args.ignore_stdin = False
-        self.parser.env = MockEnvironment()
-        self.parser._guess_method()
-        assert self.parser.args.method == 'POST'
-        assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items == [
-            KeyValueArg(key='new_item', value='a', sep='=', orig='new_item=a'),
-            KeyValueArg(
-                key='old_item', value='b', sep='=', orig='old_item=b'),
-        ]
+        assert self.parser.args.method == expected_method
+        assert self.parser.args.url == expected_url
+        assert self.parser.args.request_items == expected_items
 
 
 class TestNoOptions:
