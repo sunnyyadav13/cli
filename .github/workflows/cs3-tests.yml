@@ -1,0 +1,28 @@
+name: CS3 Tests (Python 3.12)
+
+# SOEN 6431 Case Study 3: runs httpie's full test suite on each pull request
+# into cs3-base. The upstream workflows are disabled in this fork because
+# their matrix (Python 3.7, macos-13) no longer runs on GitHub's runners.
+
+on:
+  pull_request:
+    branches: [cs3-base]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install httpie with test extras
+        run: python -m pip install --upgrade pip && python -m pip install -e '.[dev]'
+      - name: Run the full test suite
+        # The three deselected tests fail on unmodified cs3-base too
+        # (argparse message change in Python 3.12; big5 charset detection).
+        run: >
+          python -m pytest -q -p no:cacheprovider tests
+          --deselect "tests/test_cli_ui.py::test_naked_invocation[args3-expected_msg3]"
+          -k "not (charset_detection and big5)"
