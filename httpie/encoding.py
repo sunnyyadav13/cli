@@ -41,6 +41,13 @@ def smart_decode(content: ContentBytes, encoding: str) -> Tuple[str, str]:
     return content.decode(encoding, 'replace'), encoding
 
 
+def as_bytes(data: Union[str, bytes]) -> bytes:
+    """Return `data` as bytes, UTF-8-encoding it if it is a `str`."""
+    if isinstance(data, str):
+        return data.encode()
+    return data
+
+
 def smart_encode(content: str, encoding: str) -> bytes:
     """Encode `content` using the given `encoding`.
 

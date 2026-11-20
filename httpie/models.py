@@ -15,6 +15,7 @@ from .cli.constants import (
     OUT_RESP_META
 )
 from .compat import cached_property
+from .encoding import as_bytes
 from .utils import split_cookies, parse_content_type_header
 
 ELAPSED_TIME_LABEL = 'Elapsed time'
@@ -162,11 +163,8 @@ class HTTPRequest(HTTPMessage):
 
     @property
     def body(self):
-        body = self._orig.body
-        if isinstance(body, str):
-            # Happens with JSON/form request data parsed from the command line.
-            body = body.encode()
-        return body or b''
+        # `str` happens with JSON/form request data parsed from the command line.
+        return as_bytes(self._orig.body) or b''
 
 
 RequestsMessage = Union[requests.PreparedRequest, requests.Response]
