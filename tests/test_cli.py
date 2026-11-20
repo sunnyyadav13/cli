@@ -292,7 +292,7 @@ class TestArgumentParser:
         self.parser._guess_method()
         assert self.parser.args.method == 'GET'
         assert self.parser.args.url == 'http://example.com/'
-        assert self.parser.args.request_items, [
+        assert self.parser.args.request_items == [
             KeyValueArg(key='test',
                         value='header',
                         sep=':',
@@ -310,7 +310,9 @@ class TestArgumentParser:
         self.parser.args.ignore_stdin = False
         self.parser.env = MockEnvironment()
         self.parser._guess_method()
-        assert self.parser.args.request_items, [
+        assert self.parser.args.method == 'POST'
+        assert self.parser.args.url == 'http://example.com/'
+        assert self.parser.args.request_items == [
             KeyValueArg(key='new_item', value='a', sep='=', orig='new_item=a'),
             KeyValueArg(
                 key='old_item', value='b', sep='=', orig='old_item=b'),
