@@ -66,6 +66,26 @@ def raw_main(
         if include_traceback:
             raise
 
+    def abort(message: str, status: ExitStatus) -> ExitStatus:
+        # Must be called from within an `except` block: the bare `raise`
+        # re-raises the exception currently being handled (as above).
+        env.stderr.write(message)
+        if include_traceback:
+            raise
+        return status
+
+    def handle_interruption(e: BaseException) -> ExitStatus:
+        """Map `KeyboardInterrupt`/`SystemExit` to an exit status.
+
+        Shared by the argument-parsing phase and the main-program phase.
+
+        """
+        if isinstance(e, KeyboardInterrupt):
+            return abort('\n', ExitStatus.ERROR_CTRL_C)
+        if e.code != ExitStatus.SUCCESS:
+            return abort('\n', ExitStatus.ERROR)
+        return ExitStatus.SUCCESS
+
     if include_debug_info:
         print_debug_info(env)
         if args == ['--debug']:
@@ -79,21 +99,9 @@ def raw_main(
             env=env,
         )
     except NestedJSONSyntaxError as exc:
-        env.stderr.write(str(exc) + "\n")
-        if include_traceback:
-            raise
-        exit_status = ExitStatus.ERROR
-    except KeyboardInterrupt:
-        env.stderr.write('\n')
-        if include_traceback:
-            raise
-        exit_status = ExitStatus.ERROR_CTRL_C
-    except SystemExit as e:
-        if e.code != ExitStatus.SUCCESS:
-            env.stderr.write('\n')
-            if include_traceback:
-                raise
-            exit_status = ExitStatus.ERROR
+        exit_status = abort(str(exc) + '\n', ExitStatus.ERROR)
+    except (KeyboardInterrupt, SystemExit) as e:
+        exit_status = handle_interruption(e)
     else:
         check_updates(env)
         try:
@@ -101,17 +109,8 @@ def raw_main(
                 args=parsed_args,
                 env=env,
             )
-        except KeyboardInterrupt:
-            env.stderr.write('\n')
-            if include_traceback:
-                raise
-            exit_status = ExitStatus.ERROR_CTRL_C
-        except SystemExit as e:
-            if e.code != ExitStatus.SUCCESS:
-                env.stderr.write('\n')
-                if include_traceback:
-                    raise
-                exit_status = ExitStatus.ERROR
+        except (KeyboardInterrupt, SystemExit) as e:
+            exit_status = handle_interruption(e)
         except requests.Timeout:
             exit_status = ExitStatus.ERROR_TIMEOUT
             env.log_error(f'Request timed out ({parsed_args.timeout}s).')
