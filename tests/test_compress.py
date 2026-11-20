@@ -11,6 +11,11 @@ our zlib-encoded request data.
 import base64
 import zlib
 
+import pytest
+import requests
+
+from httpie.models import HTTPRequest
+from httpie.uploads import compress_request
 from .fixtures import FILE_PATH, FILE_CONTENT
 from httpie.status import ExitStatus
 from .utils import StdinBytesIO, http, HTTP_OK, MockEnvironment
@@ -138,3 +143,25 @@ def test_compress_file(httpbin_both):
         'multipart/form-data; boundary=')
     assert r.json['files'] == {}
     assert FILE_CONTENT not in r
+
+
+@pytest.mark.parametrize('body', ['caf\u00e9 ' * 20, ('caf\u00e9 ' * 20).encode()], ids=['str', 'bytes'])
+def test_compress_request_accepts_str_and_bytes_body(body):
+    request = requests.Request('POST', 'http://example.org', data=b'').prepare()
+    request.body = body
+    compress_request(request, always=True)
+    assert zlib.decompress(request.body) == ('caf\u00e9 ' * 20).encode()
+    assert request.headers['Content-Encoding'] == 'deflate'
+    assert request.headers['Content-Length'] == str(len(request.body))
+
+
+@pytest.mark.parametrize('body, expected', [
+    (None, b''),
+    ('', b''),
+    ('caf\u00e9', 'caf\u00e9'.encode()),
+    (b'raw', b'raw'),
+])
+def test_http_request_body_is_always_bytes(body, expected):
+    request = requests.Request('GET', 'http://example.org').prepare()
+    request.body = body
+    assert HTTPRequest(request).body == expected

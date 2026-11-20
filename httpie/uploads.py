@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from requests_toolbelt import MultipartEncoder
 
 from .context import Environment
+from .encoding import as_bytes  # noqa: F401 (re-exported for compatibility)
 from .cli.dicts import MultipartRequestDataDict, RequestDataDict
 from .compat import is_windows
 
@@ -60,13 +61,6 @@ class ChunkedMultipartUploadStream(ChunkedStream):
             if not chunk:
                 break
             yield chunk
-
-
-def as_bytes(data: Union[str, bytes]) -> bytes:
-    if isinstance(data, str):
-        return data.encode()
-    else:
-        return data
 
 
 CallbackT = Callable[[bytes], bytes]
@@ -254,12 +248,10 @@ def compress_request(
     always: bool,
 ):
     deflater = zlib.compressobj()
-    if isinstance(request.body, str):
-        body_bytes = request.body.encode()
-    elif hasattr(request.body, 'read'):
+    if hasattr(request.body, 'read'):
         body_bytes = request.body.read()
     else:
-        body_bytes = request.body
+        body_bytes = as_bytes(request.body)
     deflated_data = deflater.compress(body_bytes)
     deflated_data += deflater.flush()
     is_economical = len(deflated_data) < len(body_bytes)

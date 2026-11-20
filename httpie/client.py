@@ -18,7 +18,7 @@ from .cli.constants import HTTP_OPTIONS
 from .cli.dicts import HTTPHeadersDict
 from .cli.nested_json import unwrap_top_level_list_if_needed
 from .context import Environment
-from .encoding import UTF8
+from .encoding import UTF8, as_bytes
 from .models import RequestsMessage
 from .plugins.registry import plugin_manager
 from .sessions import get_httpie_session
@@ -197,10 +197,8 @@ def finalize_headers(headers: HTTPHeadersDict) -> HTTPHeadersDict:
             # changing the semantics of the field value”
             # <https://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html>
             # Also, requests raises `InvalidHeader` for leading spaces.
-            value = value.strip()
-            if isinstance(value, str):
-                # See <https://github.com/httpie/cli/issues/212>
-                value = value.encode()
+            # See <https://github.com/httpie/cli/issues/212>
+            value = as_bytes(value.strip())
         elif name.lower() in SKIPPABLE_HEADERS:
             # Some headers get overwritten by urllib3 when set to `None`
             # and should be replaced with the `SKIP_HEADER` constant.
