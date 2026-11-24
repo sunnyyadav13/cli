@@ -75,5 +75,5 @@ class BearerAuthPlugin(BuiltinAuthPlugin):
     auth_parse = False
 
     # noinspection PyMethodOverriding
-    def get_auth(self, **kwargs) -> requests.auth.HTTPDigestAuth:
+    def get_auth(self, **kwargs) -> HTTPBearerAuth:
         return HTTPBearerAuth(self.raw_auth)

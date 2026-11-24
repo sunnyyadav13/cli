@@ -1,4 +1,4 @@
-from typing import Any, Type, List, Dict, TYPE_CHECKING
+from typing import Any, Type, List, Dict, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from httpie.sessions import Session
@@ -23,7 +23,7 @@ For fixing all named sessions:
 OLD_HEADER_STORE_LINK = '\nSee $INSERT_LINK for more information.'
 
 
-def pre_process(session: 'Session', headers: Any) -> List[Dict[str, Any]]:
+def pre_process(session: 'Session', headers: Any) -> List[Tuple[str, Any]]:
     """Serialize the headers into a unified form and issue a warning if
     the session file is using the old layout."""
 
