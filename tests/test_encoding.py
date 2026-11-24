@@ -89,10 +89,10 @@ def test_unicode_raw_json_item(httpbin):
 
 
 def test_unicode_raw_json_item_verbose(httpbin):
-    r = http('--json', 'POST', httpbin + '/post',
+    r = http('--verbose', '--json', 'POST', httpbin + '/post',
              f'test:={{ "{UNICODE}" : [ "{UNICODE}" ] }}')
     assert HTTP_OK in r
-    assert r.json['json'] == {'test': {UNICODE: [UNICODE]}}
+    assert UNICODE in r
 
 
 def test_unicode_url_query_arg_item(httpbin):

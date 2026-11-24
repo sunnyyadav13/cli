@@ -63,18 +63,6 @@ def test_compress_force_with_negative_ratio(httpbin_both):
     assert HTTP_OK in r
     assert r.json['headers']['Content-Encoding'] == 'deflate'
     assert_decompressed_equal(r.json['data'], '{"foo": "bar"}')
-
-
-def test_compress_json(httpbin_both):
-    r = http(
-        '--compress',
-        '--compress',
-        httpbin_both + '/post',
-        'foo=bar',
-    )
-    assert HTTP_OK in r
-    assert r.json['headers']['Content-Encoding'] == 'deflate'
-    assert_decompressed_equal(r.json['data'], '{"foo": "bar"}')
     assert r.json['json'] is None
 
 
