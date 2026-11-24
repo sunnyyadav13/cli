@@ -49,8 +49,8 @@ def test_raw_request_headers_response_headers(httpbin):
 
 
 def test_terminal_request_body_response_body(httpbin):
-    r = http('--print=Hh', httpbin + '/get')
-    assert_output_matches(r, [Expect.REQUEST_HEADERS, Expect.RESPONSE_HEADERS])
+    r = http('--print=Bb', httpbin + '/post', 'a=b')
+    assert_output_matches(r, [Expect.BODY, Expect.SEPARATOR, Expect.BODY, Expect.SEPARATOR])
 
 
 def test_raw_headers_and_body():
