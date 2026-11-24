@@ -7,6 +7,7 @@ import sys
 import time
 import tempfile
 import sysconfig
+import warnings
 
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -101,6 +102,12 @@ def humanize_bytes(n, precision=2):
     '1.3 GB'
 
     """
+    warnings.warn(
+        'httpie.utils.humanize_bytes() is deprecated and will be removed'
+        ' in a future major release.',
+        DeprecationWarning,
+        stacklevel=2,
+    )
     abbrevs = [
         (1 << 50, 'PB'),
         (1 << 40, 'TB'),
